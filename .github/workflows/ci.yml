@@ -103,9 +103,31 @@ jobs:
             docker compose up -d --build
 
             docker compose ps
+           
+            echo "Waiting for backend API..."
 
-            curl -f http://127.0.0.1/
-            curl -f http://127.0.0.1/api/v1/users
+            for i in {1..30}; do
+              if curl -fsS http://127.0.0.1/api/v1/users > /dev/null; then
+                echo "Backend API is ready"
+                break
+              fi
+
+              if [ "$i" -eq 30 ]; then
+                echo "Backend API failed to become ready"
+                docker compose ps
+                docker compose logs --tail 50 backend
+                exit 1
+              fi
+
+              echo "Backend not ready yet... attempt $i/30"
+              sleep 2
+            done
+
+            echo "Testing frontend..."
+            curl -fsS http://127.0.0.1/ > /dev/null
+
+            echo "Testing API..."
+            curl -fsS http://127.0.0.1/api/v1/users
 
             echo "Deployment successful"
           EOF
